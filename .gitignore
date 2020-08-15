@@ -1,0 +1,10 @@
+/backend/functions/blast/Database
+/backend/functions/blast/blast.fasta
+/backend/functions/blast/blastsets
+.DS_Store
+/dist/
+/backend/venv/
+/backend/__pycache__/
+/backend/err.log
+__pycache__/
+/web

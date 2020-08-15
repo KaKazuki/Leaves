@@ -1,0 +1,53 @@
+<component name="InspectionProjectProfileManager">
+  <profile version="1.0">
+    <option name="myName" value="Project Default" />
+    <inspection_tool class="DuplicatedCode" enabled="true" level="WEAK WARNING" enabled_by_default="true">
+      <Languages>
+        <language minSize="48" name="Python" />
+      </Languages>
+    </inspection_tool>
+    <inspection_tool class="HtmlUnknownTag" enabled="true" level="WARNING" enabled_by_default="true">
+      <option name="myValues">
+        <value>
+          <list size="19">
+            <item index="0" class="java.lang.String" itemvalue="nobr" />
+            <item index="1" class="java.lang.String" itemvalue="noembed" />
+            <item index="2" class="java.lang.String" itemvalue="comment" />
+            <item index="3" class="java.lang.String" itemvalue="noscript" />
+            <item index="4" class="java.lang.String" itemvalue="embed" />
+            <item index="5" class="java.lang.String" itemvalue="script" />
+            <item index="6" class="java.lang.String" itemvalue="el-table" />
+            <item index="7" class="java.lang.String" itemvalue="el-table-column" />
+            <item index="8" class="java.lang.String" itemvalue="el-col" />
+            <item index="9" class="java.lang.String" itemvalue="el-row" />
+            <item index="10" class="java.lang.String" itemvalue="el-form-item" />
+            <item index="11" class="java.lang.String" itemvalue="el-input" />
+            <item index="12" class="java.lang.String" itemvalue="el-select" />
+            <item index="13" class="java.lang.String" itemvalue="el-option" />
+            <item index="14" class="java.lang.String" itemvalue="el-menu" />
+            <item index="15" class="java.lang.String" itemvalue="el-menu-item" />
+            <item index="16" class="java.lang.String" itemvalue="el-button" />
+            <item index="17" class="java.lang.String" itemvalue="el-dropdown" />
+            <item index="18" class="java.lang.String" itemvalue="el-dropdown-menu" />
+          </list>
+        </value>
+      </option>
+      <option name="myCustomValuesEnabled" value="true" />
+    </inspection_tool>
+    <inspection_tool class="PyPep8NamingInspection" enabled="true" level="WEAK WARNING" enabled_by_default="true">
+      <option name="ignoredErrors">
+        <list>
+          <option value="N803" />
+        </list>
+      </option>
+    </inspection_tool>
+    <inspection_tool class="PyUnresolvedReferencesInspection" enabled="true" level="WARNING" enabled_by_default="true">
+      <option name="ignoredIdentifiers">
+        <list>
+          <option value="backend.main.model2" />
+          <option value="requests.models.Response.__getitem__" />
+        </list>
+      </option>
+    </inspection_tool>
+  </profile>
+</component>
