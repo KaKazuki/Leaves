@@ -4,6 +4,7 @@ from Bio import Seq
 from Bio.SeqUtils import GC
 
 from backend.utils.utils import remove_unnecessary
+from backend.functions.blast.blast import get_homology_count
 
 # Breslauer et al. (1986), Proc Natl Acad Sci USA 83: 3746-3750
 Breslauer = {
@@ -25,6 +26,40 @@ SantaLucia = {
 }
 
 
+def narrow_down(df: pd.DataFrame, conditions: str, pending=True):
+    if not conditions:
+        return df, None
+    if conditions[-1] == ';':
+        conditions = conditions.rstrip(';')
+    conditions_list = conditions.split(';')
+    pending_conditions = ''
+    result = []
+    for condition in conditions_list:
+        condition_list = condition.split()
+        if len(condition_list) != 3:
+            raise TypeError
+        column = condition_list[0]
+        if column == 'homology' and pending:
+            pending_conditions += condition + ';'
+            continue
+        sign = condition_list[1]
+        value = int(condition_list[2])
+        if len(result) != 0:
+            df = result[-1]
+        if sign == '>=':
+            conditional_df = df[df[column] >= value]
+        elif sign == '<=':
+            conditional_df = df[df[column] <= value]
+        elif sign == '<':
+            conditional_df = df[df[column] < value]
+        elif sign == '>':
+            conditional_df = df[df[column] > value]
+        else:
+            raise TypeError
+        result.append(conditional_df)
+    return result[-1], pending_conditions
+
+
 # SantaLucia (1998), Proc Natl Acad Sci USA 95: 1460-1465
 def salt_correction(method: int, Na: float, K=0.0, Tris=0, Mg=0.0, dNTPs=0.0, seq=None):
     mono = Na + K + Tris / 2.0
@@ -36,6 +71,9 @@ def salt_correction(method: int, Na: float, K=0.0, Tris=0, Mg=0.0, dNTPs=0.0, se
         return corr
     elif method == 2:
         corr = 0.368 * (len(seq) - 1) * np.log(mono)
+        return corr
+    elif method == 3:
+        corr = ((4.29 * GC(seq) / 100 - 3.95) * 1e-5 * np.log(mono)) + 9.40e-6 * np.log(mono) ** 2
         return corr
     else:
         raise ValueError
@@ -94,17 +132,17 @@ class NearestNeighbor(object):
         ends = self.seq[0] + self.seq[-1]
         AT = ends.count('A') + ends.count('T')
         CG = ends.count('C') + ends.count('G')
-        delta_h += nn_table['init_A/T'][self.d_h] * AT
-        delta_s += nn_table['init_A/T'][self.d_s] * AT
-        delta_s += nn_table['init_G/C'][self.d_h] * CG
-        delta_s += nn_table['init_G/C'][self.d_h] * CG
+        delta_h += nn_table["init_A/T"][self.d_h] * AT
+        delta_s += nn_table["init_A/T"][self.d_s] * AT
+        delta_h += nn_table["init_G/C"][self.d_h] * CG
+        delta_s += nn_table["init_G/C"][self.d_s] * CG
 
         for base_number in range(len(self.seq) - 1):
             interaction = self.seq[base_number: base_number + 2]
             delta_h += nn_table[interaction][self.d_h]
             delta_s += nn_table[interaction][self.d_s]
-        corrected_delta_s = delta_s + salt_correction(seq=self.seq, Na=self.Na, method=2)
-        melting_temp = (delta_h * 1000) / (corrected_delta_s + (self.R * np.log(self.mol / 4))) - 273.15
+        delta_s += salt_correction(seq=self.seq, Na=self.Na, method=2)
+        melting_temp = (delta_h * 1000) / (delta_s + (self.R * np.log(self.mol / 4))) - 273.15
         return round(melting_temp, 1)
 
 
@@ -176,43 +214,55 @@ def view_position(full_seq, pos_list, per_line=100):
     return marked_result
 
 
-class OligoCalculator(object):
-    def __init__(self, sequence, cut_length):
-        self.sequence = remove_unnecessary(sequence)
-        self.cut_length = cut_length
+def calculate(sequence, cut_length, conditions, cg_clamp, self_comp) -> pd.DataFrame:
+    sequence = remove_unnecessary(sequence).upper()
+    frag_list, position_list = get_fragments(seq=sequence, cut_length=cut_length)
+    used_frag_list = []
+    rev_comp_list = []
+    tm_list_breslauer = []
+    tm_list_santalucia = []
+    cg_list = []
+    marked_list = []
+    for frag, pos in zip(frag_list, position_list):
+        if cg_clamp:
+            if check_gc_clamp(frag, last=5):
+                continue
+        if self_comp:
+            if check_selfcomp(frag, threshold=4):
+                continue
+        used_frag_list.append(frag)
+        rev_comp_list.append(str(Seq.reverse_complement(frag)))
+        nn = NearestNeighbor(frag)
+        melting_temp_breslauer = nn.breslauer()
+        melting_temp_santalucia = nn.santalucia()
+        cg_content = round(GC(frag), 1)
+        marked_result = view_position(full_seq=sequence, pos_list=pos)
+        tm_list_breslauer.append(melting_temp_breslauer)
+        tm_list_santalucia.append(melting_temp_santalucia)
+        cg_list.append(cg_content)
+        marked_list.append(marked_result)
+    df = pd.DataFrame({
+        'fragment': used_frag_list,
+        'rev_comp': rev_comp_list,
+        'breslauer': tm_list_breslauer,
+        'santalucia': tm_list_santalucia,
+        'cg_content': cg_list,
+        'position': marked_list
+    })
+    # narrow down except homology
+    filtered_df, homology_condition = narrow_down(df, conditions=conditions)
+    homology_list = get_homology_count(filtered_df['fragment'])
+    filtered_df['homology'] = homology_list
+    # narrowed down by homology
+    if homology_condition:
+        filtered_df, _ = narrow_down(filtered_df, homology_condition, pending=False)
+    # sorted by breslauer
+    filtered_df_s = filtered_df.sort_values('breslauer', ascending=False)
+    return filtered_df_s
 
-    def get_result(self, selfcomp=False, gc_clamp=False) -> pd.DataFrame:
-        frag_list, locate_list = get_fragments(seq=self.sequence, cut_length=self.cut_length)
-        rev_comp_list = []
-        tm_list_breslauer = []
-        tm_list_santalucia = []
-        cg_list = []
-        frag_list_new = []
-        marked_list = []
-        for frag, pos in zip(frag_list, locate_list):
-            if gc_clamp:
-                if check_gc_clamp(frag, last=5):
-                    continue
-            if selfcomp:
-                if check_selfcomp(frag, threshold=4):
-                    continue
-            rev_comp_list.append(str(Seq.reverse_complement(frag)))
-            nn = NearestNeighbor(frag)
-            melting_temp_breslauer = nn.breslauer()
-            melting_temp_santalucia = nn.santalucia()
-            cg_content = round(GC(frag), 1)
-            marked_result = view_position(full_seq=self.sequence, pos_list=pos)
-            tm_list_breslauer.append(melting_temp_breslauer)
-            tm_list_santalucia.append(melting_temp_santalucia)
-            cg_list.append(cg_content)
-            frag_list_new.append(frag)
-            marked_list.append(marked_result)
-        df = pd.DataFrame({
-            'fragment': frag_list_new,
-            'rev_comp': rev_comp_list,
-            'breslauer': tm_list_breslauer,
-            'santalucia': tm_list_santalucia,
-            'cg_content': cg_list,
-            'position': marked_list
-        })
-        return df
+
+if __name__ == '__main__':
+    nn = NearestNeighbor('cgagcacgatgctagcagat')
+    print(nn.santalucia())
+    from Bio.SeqUtils import MeltingTemp
+    print(MeltingTemp.Tm_NN('cgagcacgatgctagcagat'.upper(), Na=50, saltcorr=6, dnac1=250, dnac2=250))

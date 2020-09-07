@@ -3,10 +3,9 @@ import logging
 from flask import Blueprint, jsonify, request
 
 from backend.functions.alignment.pairwise import needle, water, parse, prettier
-from backend.functions.blast.blast import blastn, get_homology_count, check_usable
+from backend.functions.blast.blast import blastn, check_usable
 from backend.functions.edit import Editor
-from backend.functions.primer import OligoCalculator
-from backend.utils.utils import refiner
+from backend.functions.primer import calculate
 
 logging.basicConfig(level=logging.INFO)
 api = Blueprint('api', __name__)
@@ -29,13 +28,15 @@ def pairwise_alignment():
     if not seq_data_2:
         return jsonify({'API': 'Alignment', 'message': 'not included value in SeqData2'}), 400
     if not algorithm:
-        return jsonify({'API': 'Alignment', 'message': 'not included value in Algorithm'}), 400
+        algorithm = 'Needleman-Wunsch (Global)'
     if not enter_type:
-        return jsonify({'API': 'Alignment', 'message': 'not include value in EnterType'}), 400
+        enter_type = 'DNA'
     if not str_per_line:
         per_line = 100
     else:
         per_line = int(str_per_line)
+        if not (100 < per_line <= 250):
+            per_line = 100
     # parse
     name1, seq1 = parse(seq_data_1)
     name2, seq2 = parse(seq_data_2)
@@ -109,27 +110,32 @@ def primer():
     required = ('input_seq', 'frag_length', 'conditions')
     if not all(k in request_json for k in required):
         return jsonify({'API': 'Primer', 'message': 'missing value'}), 400
-    # calculate -> result
     str_cut_length = request_json['frag_length']
     input_seq = request_json['input_seq']
     cg_clamp = request_json['cg_clamp']
     self_comp = request_json['self_comp']
-    if not str_cut_length:
-        return jsonify({'API': 'Primer', 'message': 'not included value in frag_length'}), 400
+    conditions = request_json['conditions']
     if not input_seq:
         return jsonify({'API': 'Primer', 'message': 'not contain value in input_seq'}), 400
     cut_length = int(str_cut_length)
-    oligo_calculator = OligoCalculator(input_seq, cut_length)
-    result_df = oligo_calculator.get_result(selfcomp=self_comp, gc_clamp=cg_clamp)
-    # narrow down
-    refined_df, pending_conditions = refiner(result_df, conditions=request_json['conditions'])
-    # add column as number of homology
-    num_of_homology_list = get_homology_count(refined_df['fragment'])
-    refined_df['homology'] = num_of_homology_list
-    # narrow down by number of homology
-    if pending_conditions:
-        refined_df, _ = refiner(refined_df, conditions=pending_conditions, pending=False)
-    # sorted by tm_value
-    refined_df_sorted = refined_df.sort_values('breslauer', ascending=False)
+    if not (18 < cut_length <= 40):
+        cut_length = 22
+    # only one side
+    if not ('[' and ']' in input_seq):
+        result_df = calculate(sequence=input_seq, cut_length=cut_length,
+                              self_comp=self_comp, cg_clamp=cg_clamp, conditions=conditions)
+        logging.info({'API': 'Primer', 'status': 'finished'})
+        return result_df.to_json(orient='records')
+    # both forward and reverse
+    left = input_seq.split('[')[0]
+    right = input_seq.split(']')[1]
+    forward_df = calculate(sequence=left, cut_length=cut_length,
+                           self_comp=self_comp, cg_clamp=cg_clamp, conditions=conditions)
+    reverse_df = calculate(sequence=right, cut_length=cut_length,
+                           self_comp=self_comp, cg_clamp=cg_clamp, conditions=conditions)
     logging.info({'API': 'Primer', 'status': 'finished'})
-    return refined_df_sorted.to_json(orient='records')
+    result = {
+        'forward': forward_df.to_dict(orient='records'),
+        'reverse': reverse_df.to_dict(orient='records')
+    }
+    return result

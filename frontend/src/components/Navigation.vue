@@ -6,6 +6,7 @@
       dark
       clipped
       v-model="drawer"
+      width="15%"
       height="100%"
     >
       <v-list dense nav>

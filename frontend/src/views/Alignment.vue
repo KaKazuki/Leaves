@@ -3,12 +3,12 @@
     <v-row justify="center">
       <v-col cols="11" sm="4">
         <v-row>
-          <v-col cols="12" lg="6">
+          <v-col cols="12" lg="7">
             <SelectAlgorithm
               v-model="alignment.Algorithm"
             />
           </v-col>
-          <v-col cols="12" lg="6">
+          <v-col cols="12" lg="5">
             <SelectEnterType
               v-model="alignment.EnterType"
             />
@@ -24,7 +24,7 @@
           custom-label="Sequence2"
           :custom-rows="7"
         />
-        <NumberOfCharactersPerLine
+        <PerLine
           v-model="alignment.PerLine"
         />
         <FormButtons @clear="clear" @submit="submit"/>
@@ -60,7 +60,7 @@
 <script>
 import axios from 'axios'
 import SeqField from '../components/SeqField'
-import NumberOfCharactersPerLine from '../components/Alignment/NumberOfCharactersPerLine'
+import PerLine from '@/components/Alignment/PerLine'
 import SelectAlgorithm from '../components/Alignment/SelectAlgorithm'
 import SelectEnterType from '../components/Alignment/SelectEnterType'
 import FormButtons from '@/components/FormButtons'
@@ -70,7 +70,7 @@ export default {
   components: {
     SeqField,
     FormButtons,
-    NumberOfCharactersPerLine,
+    PerLine,
     SelectAlgorithm,
     SelectEnterType
   },

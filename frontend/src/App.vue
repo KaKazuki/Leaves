@@ -3,7 +3,7 @@
     <AppBar />
     <Navigation />
     <v-main>
-      <router-view style="padding-top: 45px"></router-view>
+      <router-view style="padding-top: 55px"></router-view>
     </v-main>
   </v-app>
 </template>

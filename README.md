@@ -24,6 +24,9 @@ $ pip install -r requirements.txt
 ```
 ### frontend
 ```
+$ cd frontend
+```
+```
 $ npm install
 ```
 ```

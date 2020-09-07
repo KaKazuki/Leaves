@@ -18,6 +18,16 @@ export default {
     customLabel: { type: String },
     customRows: { type: Number, default: 6 },
     value: { type: String }
+  },
+  watch: {
+    value: function (val) {
+      this.value = val.replace('\n', '')
+    }
   }
 }
 </script>
+<style>
+textarea {
+  font-family: monospace;
+}
+</style>

@@ -1,7 +1,7 @@
 <template>
   <v-select
     :items="types"
-    label="Enter a pair ofEnter a pair of"
+    label="Enter a pair of"
     v-bind:value="value"
     v-on:input="$emit('input', $event)"
     color="success"

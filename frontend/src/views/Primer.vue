@@ -2,7 +2,7 @@
   <div id="primer">
     <!---Form--->
     <v-row justify="center">
-      <v-col cols="11" sm="4">
+      <v-col cols="12" sm="4">
         <SeqField
           v-model="primer.input_seq"
           custom-label="Query sequence"
@@ -44,51 +44,108 @@
         <FormButtons @clear="clear" @submit="submit"/>
       </v-col>
       <!---DataTable-->
+      <!--- TODO DataTable to Component-->
       <v-col cols="7" sm="7">
         <v-card max-height="1400" max-width="1000">
           <div v-if="visual">
-            <v-card-title>
-              Result
-              <v-spacer></v-spacer>
-              <v-text-field
-                v-model="search"
-                append-icon="mdi-magnify"
-                label="Search"
-                single-line
-                hide-details
-              >
-              </v-text-field>
-            </v-card-title>
-            <v-card-text>
-              <v-data-table
-                :search="search"
-                :headers="headers"
-                :items="$store.getters.getPrimerData"
-                item-key="Fragment"
-                :sort-by="['breslauer']"
-                :sort-desc="[true]"
-                :loading="loading"
-                @click:row="detailView"
-              >
-                <template>
+            <v-tabs
+              v-model="tab"
+              color="success"
+              background-color="#424242"
+            >
+              <v-tabs-slider color="success"></v-tabs-slider>
+              <v-tab>Forward</v-tab>
+              <v-tab :disabled="tabDisabled">Reverse</v-tab>
+            </v-tabs>
+            <v-tabs-items
+              v-model="tab"
+            >
+              <v-tab-item>
+                <v-card-title>
+                  <v-spacer></v-spacer>
+                  <v-text-field
+                    v-model="search"
+                    append-icon="mdi-magnify"
+                    label="Search"
+                    single-line
+                    hide-details
+                  >
+                  </v-text-field>
+                </v-card-title>
+                <v-card-text>
                   <v-data-table
-                    item-key="name"
-                    class="elevation-1"
-                    loading
-                    loading-text="Loading... Please wait"
-                  ></v-data-table>
-                </template>
-                <template v-slot:item.actions="{item}">
-                  <v-icon
-                    class="ma-1"
-                    @click="blast(item)"
-                    @click.stop="blastDialog=true"
-                    :disabled="disabled"
-                  >mdi-database-search
-                  </v-icon>
-                </template>
-              </v-data-table>
-            </v-card-text>
+                    :search="search"
+                    :headers="headers"
+                    :items="forward"
+                    item-key="Fragment"
+                    :sort-by="['breslauer']"
+                    :sort-desc="[true]"
+                    :loading="loading"
+                    @click:row="detailView"
+                    >
+                    <template>
+                      <v-data-table
+                        item-key="name"
+                        class="elevation-1"
+                        loading
+                        loading-text="Loading... Please wait"
+                      ></v-data-table>
+                    </template>
+                    <template v-slot:item.actions="{item}">
+                      <v-icon
+                        class="ma-1"
+                        @click="blast(item)"
+                        @click.stop="blastDialog=true"
+                        :disabled="disabled"
+                      >mdi-database-search</v-icon>
+                    </template>
+                  </v-data-table>
+                </v-card-text>
+              </v-tab-item>
+              <v-tab-item>
+                <v-card-title>
+                  <v-spacer></v-spacer>
+                  <v-text-field
+                    v-model="search"
+                    append-icon="mdi-magnify"
+                    label="Search"
+                    single-line
+                    hide-details
+                  >
+                  </v-text-field>
+                </v-card-title>
+                <v-card-text>
+                  <v-data-table
+                    :search="search"
+                    :headers="headers"
+                    :items="reverse"
+                    item-key="Fragment"
+                    :sort-by="['breslauer']"
+                    :sort-desc="[true]"
+                    :loading="loading"
+                    @click:row="detailView"
+                  >
+                    <template>
+                      <v-data-table
+                        item-key="name"
+                        class="elevation-1"
+                        loading
+                        loading-text="Loading... Please wait"
+                      ></v-data-table>
+                    </template>
+                    <template v-slot:item.actions="{item}">
+                      <v-icon
+                        class="ma-1"
+                        @click="blast(item)"
+                        @click.stop="blastDialog=true"
+                        :disabled="disabled"
+                      >mdi-database-search
+                      </v-icon>
+                    </template>
+                  </v-data-table>
+                </v-card-text>
+              </v-tab-item>
+            </v-tabs-items>
           </div>
         </v-card>
       </v-col>
@@ -100,13 +157,13 @@
     />
     <DetailDialog
       v-model="detailDialog"
-      :fragment="selectedLine.fragment"
-      :revcomp="selectedLine.rev_comp"
-      :breslauer="selectedLine.breslauer"
-      :santalucia="selectedLine.santalucia"
-      :cg_content="selectedLine.cg_content"
-      :homology="selectedLine.homology"
-      :position="selectedLine.position"
+      :fragment="selectedLine['fragment']"
+      :revcomp="selectedLine['rev_comp']"
+      :breslauer="selectedLine['breslauer']"
+      :santalucia="selectedLine['santalucia']"
+      :cg_content="selectedLine['cg_content']"
+      :homology="selectedLine['homology']"
+      :position="selectedLine['position']"
     />
   </div>
 </template>
@@ -117,10 +174,8 @@ import SeqField from '../components/SeqField'
 import SeqLengthField from '../components/Primer/SeqLengthField'
 import Conditions from '../components/Primer/Conditions'
 import BlastDialog from '../components/Primer/BlastDialog'
-import DetailDialog from '@/components/Primer/DetailDialog'
+import DetailDialog from '../components/Primer/DetailDialog'
 import FormButtons from '../components/FormButtons'
-
-import { mapMutations } from 'vuex'
 
 export default {
   components: {
@@ -159,22 +214,36 @@ export default {
       search: '',
       isRemove: true,
       loading: false,
-      disabled: false
+      disabled: false,
+
+      tab: false,
+      forward: '',
+      reverse: '',
+      tabDisabled: false
     }
   },
   methods: {
-    submit() {
+    submit: function () {
       if (this.primer.input_seq.length !== 0 && this.primer.frag_length.length !== 0) {
         if (this.isRemove && this.primer.conditions.length === 0) {
           this.primer.conditions =
-            'breslauer >= 57; breslauer < 65; cg_content <= 45; cg_content > 35; homology <= 15;'
+            'breslauer >= 57; breslauer < 65; cg_content <= 45; cg_content > 35; homology <= 15; homology > 0;'
         }
         this.loading = true
         axios.post('/api/primer', this.primer)
           .then(response => {
             this.loading = false
             this.visual = true
-            this.SET_PRIMER_DATA(response.data)
+            const result = response.data
+            if (Object.keys(result).length === 2) {
+              this.forward = result['forward']
+              this.reverse = result['reverse']
+              this.tabDisabled = false
+            } else {
+              this.forward = result
+              this.tab = 'Forward'
+              this.tabDisabled = true
+            }
           })
           .catch(error => {
             console.log(error.response.data)
@@ -205,16 +274,12 @@ export default {
       this.primer.frag_length = 22
       this.primer.conditions = ''
       this.isRemove = true
-    },
-    ...mapMutations(['SET_PRIMER_DATA'])
+    }
   },
   mounted() {
-    if (this.$store.getters.getPrimerData) {
-      this.visual = true
-    }
     axios.get('/api/blast')
       .then(response => {
-        const judge = response.data.usable
+        const judge = response.data['usable']
         if (!judge) {
           this.disabled = true
         }

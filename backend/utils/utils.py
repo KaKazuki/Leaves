@@ -1,42 +1,7 @@
 import logging
-import pandas as pd
 import re
 
 logger = logging.getLogger(__name__)
-
-
-def refiner(df: pd.DataFrame, conditions: str, pending=True):
-    if not conditions:
-        return df, None
-    if conditions[-1] == ';':
-        conditions = conditions.rstrip(';')
-    conditions_list = conditions.split(';')
-    pending_conditions = ''
-    result = []
-    for condition in conditions_list:
-        condition_list = condition.split()
-        if len(condition_list) != 3:
-            raise TypeError
-        column = condition_list[0]
-        if column == 'homology' and pending:
-            pending_conditions += condition + ';'
-            continue
-        sign = condition_list[1]
-        value = int(condition_list[2])
-        if len(result) != 0:
-            df = result[-1]
-        if sign == '>=':
-            conditional_df = df[df[column] >= value]
-        elif sign == '<=':
-            conditional_df = df[df[column] <= value]
-        elif sign == '<':
-            conditional_df = df[df[column] < value]
-        elif sign == '>':
-            conditional_df = df[df[column] > value]
-        else:
-            raise TypeError
-        result.append(conditional_df)
-    return result[-1], pending_conditions
 
 
 def remove_unnecessary(seq):
