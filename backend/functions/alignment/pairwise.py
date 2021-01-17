@@ -5,7 +5,6 @@ from Bio import pairwise2
 from Bio.SubsMat.MatrixInfo import blosum62
 
 from backend.functions.alignment.matrix import dnafull
-from backend.utils.utils import remove_unnecessary
 
 
 # global
@@ -33,14 +32,11 @@ def water(seq1: str, seq2: str, enter_type, gap_penalty=-10, extend_penalty=-5):
 def parse(data: str):
     for record in SeqIO.parse(StringIO(data), "fasta"):
         if hasattr(record, '__iter__'):
-            print(record.seq)
-            removed_seq = remove_unnecessary(record.seq)
-            return record.id, removed_seq.upper()
+            return record.id, record.seq.upper()
         else:
             break
     name = None
-    removed_seq = remove_unnecessary(data)
-    return name, removed_seq.upper()
+    return name, data.upper()
 
 
 def prettier(align1, align2, _, begin, end, name1, name2, algorithm_name, full_sequence=True, per_line=100) -> str:
