@@ -12,7 +12,7 @@
     </v-app-bar-nav-icon>
     <v-toolbar-title
       style="color: #00c853;"
-    >Leaves
+    >Leaves [main]
     </v-toolbar-title>
   </v-app-bar>
 </template>
